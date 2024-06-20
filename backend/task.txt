@@ -1,0 +1,7 @@
+- write unhandled error to db or file (Skoro)
+- check constraints postgresql. Optimistic lock
+- 6 forms of Edgar Kode
+- go ORM (auto generation of script)
+- generate seed script
+- batch query OR transactions
+- code first entity framework in .Net for Golang 

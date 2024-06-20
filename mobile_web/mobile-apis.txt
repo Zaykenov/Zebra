@@ -1,0 +1,53 @@
+registration
+	/registrate
+		- request
+			- email
+			- clientName
+			- birthDate (не обязательно)
+			- deviceId
+		- response
+			- status
+				- codeSentToEmail
+				- alreadyRegistered
+	/registrate/verify-email
+		- request
+			- codeFromEmail
+			- deviceId
+		- response
+			- status
+				- ok
+				- incorrectCode
+			- clientId (если status = ok)
+signIn
+	/sign-in
+		- request
+			- email
+			- deviceId
+		- response
+			- status
+				- codeSentToEmail
+				
+	/sign-in/verify-email
+		- request
+			- codeFromEmail
+			- deviceId
+		- response
+			- status
+				- ok
+				- incorrectCode
+			- clientId (если status = ok)
+
+zebraShopMap
+	/get-shops
+		- request
+			- nothing
+		- response
+			- shops[]
+				- shop
+					- shopName (​Улица Мухтара Ауэзова, 17)
+					- location
+						- latitude (51.163358)
+						- longitude (71.431049)
+					- workTime (09:00 - 23:00)
+					
+	

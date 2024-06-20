@@ -1,0 +1,101 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API server for zebra-crm system",
+        "title": "Zebra Backend API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:4000",
+    "paths": {
+        "/signin": {
+            "post": {
+                "description": "get all workers",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "worker"
+                ],
+                "summary": "Get all workers",
+                "operationId": "get-all-workers",
+                "parameters": [
+                    {
+                        "description": "login",
+                        "name": "input",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/model.ReqLogin"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Worker"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "model.ReqLogin": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Worker": {
+            "type": "object",
+            "properties": {
+                "bind_shop": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "shops": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "token": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

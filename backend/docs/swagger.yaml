@@ -1,0 +1,66 @@
+definitions:
+  model.ReqLogin:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.Worker:
+    properties:
+      bind_shop:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      role:
+        type: string
+      shops:
+        items:
+          type: integer
+        type: array
+      token:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:4000
+info:
+  contact: {}
+  description: API server for zebra-crm system
+  title: Zebra Backend API
+  version: "1.0"
+paths:
+  /signin:
+    post:
+      consumes:
+      - application/json
+      description: get all workers
+      operationId: get-all-workers
+      parameters:
+      - description: login
+        in: body
+        name: input
+        schema:
+          $ref: '#/definitions/model.ReqLogin'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Worker'
+      summary: Get all workers
+      tags:
+      - worker
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

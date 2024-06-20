@@ -1,0 +1,415 @@
+variables:
+  GIT_SSL_NO_VERIFY: "1"
+
+
+.common:
+  buildBeforeScript: &buildBeforeScript
+    - echo 'buildBeforeScript done!1'
+
+
+stages:
+  - build-deploy-backend
+  - build-deploy-frontend
+
+build-deploy-backend-prod:
+  stage: build-deploy-backend
+  image: golang
+  tags:
+    - build
+  only:
+    refs:
+      - main
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - cd ./backend/cmd
+    - go build main.go
+    - cd ../..
+    - mv ./backend/cmd/main /home/zebra-backend/
+    - mv $BACKEND_SYSTEMD_SERVICE /etc/systemd/system/zebra-backend.service
+    - sudo systemctl daemon-reload
+    - sudo service zebra-backend stop
+    - sudo service zebra-backend start
+
+    - sudo mv $NGINX_CONFIG /etc/nginx/conf.d/zebra.conf
+    - sudo mv $NGINX_SSL_KEY /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy done!'
+
+🛠️build-deploy-backend-staging:
+  stage: build-deploy-backend
+  image: golang
+  tags:
+    - staging-deploy
+  only:
+    refs:
+      - staging
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - cd ./backend/cmd
+    - go build main.go
+    - cd ../..
+    - mv ./backend/cmd/main /home/zebra-backend-staging/
+    - mv $BACKEND_SYSTEMD_SERVICE_STAGING /etc/systemd/system/zebra-backend-staging.service
+    - sudo systemctl daemon-reload
+    - sudo service zebra-backend-staging stop
+    - sudo service zebra-backend-staging start
+
+    - sudo mv $NGINX_CONFIG_STAGING /etc/nginx/conf.d/zebra-staging.conf
+    - sudo mv $NGINX_SSL_KEY_STAGING /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB_STAGING /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy staging done!'
+
+
+
+build-deploy-frontend-prod:
+  stage: build-deploy-frontend
+  tags:
+    - deploy
+  only:
+    refs:
+      - main
+  when: manual
+  script:
+    - pwd
+    - sudo cp -r ./frontend/* /home/zebra-frontend/
+
+    - cd /home/zebra-frontend/
+    - sudo yarn install
+    - sudo mv $NEXT_CONF_PROD /home/zebra-frontend/next.config.js
+    - sudo yarn build
+    - mv $FRONTEND_SYSTEMD_SERVICE /etc/systemd/system/zebra-frontend.service
+    - sudo systemctl daemon-reload
+    - sudo service zebra-frontend stop
+    - sudo service zebra-frontend start
+
+    - sudo mv $NGINX_CONFIG /etc/nginx/conf.d/zebra.conf
+    - sudo mv $NGINX_SSL_KEY /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy done!'
+  
+🖼️build-deploy-frontend-staging:
+  stage: build-deploy-frontend
+  tags:
+    - staging-deploy
+  only:
+    refs:
+      - staging
+      - misha-fix
+  when: manual
+  script:
+    - pwd
+    - sudo cp -r ./frontend/* /home/zebra-frontend-staging/
+
+    - cd /home/zebra-frontend-staging/
+    - sudo yarn install
+    - sudo mv $NEXT_CONF_STAGING /home/zebra-frontend-staging/next.config.js
+    - sudo yarn build
+    - mv $FRONTEND_SYSTEMD_SERVICE_STAGING /etc/systemd/system/zebra-frontend-staging.service
+    - sudo systemctl daemon-reload
+    - sudo service zebra-frontend-staging stop
+    - sudo service zebra-frontend-staging start
+
+    - sudo mv $NGINX_CONFIG_STAGING /etc/nginx/conf.d/zebra-staging.conf
+    - sudo mv $NGINX_SSL_KEY_STAGING /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB_STAGING /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy staging done!'
+
+    
+⚠️clean-frontend-staging:
+  stage: build-deploy-frontend
+  tags:
+    - staging-deploy
+  only:
+    refs:
+      - staging
+  when: manual
+  script:
+    - cd /home/zebra-frontend-staging/
+  
+    - sudo rm -rf yarn.lock
+    - sudo rm -rf node_modules/
+    - sudo rm -rf yarn.lock
+    - sudo rm -rf cypress
+    - sudo rm -rf cypress.config.ts
+    - sudo rm -rf styles/
+    - sudo rm -rf src/
+    - sudo rm -rf package-lock.json
+    - sudo rm -rf package.json
+    - sudo rm -rf public/
+
+    - echo 'clean staging done!'
+
+⚠️clean-frontend-prod:
+  stage: build-deploy-frontend
+  tags:
+    - deploy
+  only:
+    refs:
+      - main
+  when: manual
+  script:
+    - cd /home/zebra-frontend/
+  
+    - sudo rm -rf yarn.lock
+    - sudo rm -rf node_modules/
+    - sudo rm -rf cypress
+    - sudo rm -rf cypress.config.ts
+    - sudo rm -rf yarn.lock
+    - sudo rm -rf styles/
+    - sudo rm -rf src/
+    - sudo rm -rf package-lock.json
+    - sudo rm -rf package.json
+    - sudo rm -rf public/
+
+    - echo 'clean main done!'
+
+
+📱build-deploy-mobile-api-staging:
+  stage: build-deploy-backend
+  tags:
+    - staging-deploy
+  only:
+    refs:
+      - staging
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - ls
+    - sudo mkdir -p /home/mobile-api-staging/
+    - cd mobile_api
+    - dotnet restore
+    - dotnet publish MobileApi/MobileApi.csproj
+    - sudo rm -rf /home/mobile-api-staging/*
+    - sudo mv MobileApi/bin/Debug/net6.0/publish/* /home/mobile-api-staging/
+    - cd ..
+    - sudo mv $MOBILE_API_CONF_STAGING /home/mobile-api-staging/appsettings.json
+    
+    - mv $MOBILE_API_SYSTEMD_SERVICE_STAGING /etc/systemd/system/mobile-api-staging.service
+    - sudo systemctl daemon-reload
+    - sudo service mobile-api-staging stop
+    - sudo service mobile-api-staging start
+    
+    - sudo mkdir -p /var/www/html/.well-known
+    - sudo mv $ANDROID_ASSETLINKS_FILE /var/www/html/.well-known/assetlinks.json
+    - sudo mv $APPLE_ASSETLINKS_FILE /var/www/html/.well-known/apple-app-site-association
+
+    - sudo mv $NGINX_CONFIG_STAGING /etc/nginx/conf.d/zebra-staging.conf
+    - sudo mv $NGINX_SSL_KEY_STAGING /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB_STAGING /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy staging done!'
+
+📱build-deploy-mobile-api-prod:
+  stage: build-deploy-backend
+  tags:
+    - deploy
+  only:
+    refs:
+      - main
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - ls
+    - sudo mkdir -p /home/mobile-api-prod/
+    - cd mobile_api
+    - dotnet restore
+    - dotnet publish MobileApi/MobileApi.csproj
+    - sudo rm -rf /home/mobile-api-prod/*
+    - sudo mv MobileApi/bin/Debug/net6.0/publish/* /home/mobile-api-prod/
+    - cd ..
+    - sudo mv $MOBILE_API_CONF_PROD /home/mobile-api-prod/appsettings.json
+    
+    - mv $MOBILE_API_SYSTEMD_SERVICE_PROD /etc/systemd/system/mobile-api-prod.service
+    - sudo systemctl daemon-reload
+    - sudo service mobile-api-prod stop
+    - sudo service mobile-api-prod start
+
+    - sudo mkdir -p /var/www/html/.well-known
+    - sudo mv $ANDROID_ASSETLINKS_FILE /var/www/html/.well-known/assetlinks.json
+    - sudo mv $APPLE_ASSETLINKS_FILE /var/www/html/.well-known/apple-app-site-association
+
+    - sudo mv $NGINX_CONFIG /etc/nginx/conf.d/zebra.conf
+    - sudo mv $NGINX_SSL_KEY /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy done!'
+
+
+🧮build-deploy-excel-gen-api-staging:
+  stage: build-deploy-backend
+  tags:
+    - staging-deploy
+  only:
+    refs:
+      - staging
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - ls
+    - sudo mkdir -p /home/excel-gen-api-staging/
+    - cd excel-gen-api/ExcelGenApi
+    - dotnet restore
+    - dotnet publish ExcelGenApi/ExcelGenApi.csproj
+    - sudo rm -rf /home/excel-gen-api-staging/*
+    - sudo mv ExcelGenApi/bin/Debug/net6.0/publish/* /home/excel-gen-api-staging/
+    - cd ..
+    - sudo mv $EXCEL_GEN_API_CONF_STAGING /home/excel-gen-api-staging/appsettings.json
+    
+    - mv $EXCEL_GEN_API_SYSTEMD_SERVICE_STAGING /etc/systemd/system/excel-gen-api-staging.service
+    - sudo systemctl daemon-reload
+    - sudo service excel-gen-api-staging stop
+    - sudo service excel-gen-api-staging start
+
+    - sudo mv $NGINX_CONFIG_STAGING /etc/nginx/conf.d/zebra-staging.conf
+    - sudo mv $NGINX_SSL_KEY_STAGING /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB_STAGING /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy staging done!'
+    
+🧮build-deploy-excel-gen-api-prod:
+  stage: build-deploy-backend
+  tags:
+    - deploy
+  only:
+    refs:
+      - main
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - ls
+    - sudo mkdir -p /home/excel-gen-api-prod/
+    - cd excel-gen-api/ExcelGenApi
+    - dotnet restore
+    - dotnet publish ExcelGenApi/ExcelGenApi.csproj
+    - sudo rm -rf /home/excel-gen-api-prod/*
+    - sudo mv ExcelGenApi/bin/Debug/net6.0/publish/* /home/excel-gen-api-prod/
+    - cd ..
+    - sudo mv $EXCEL_GEN_API_CONF_PROD /home/excel-gen-api-prod/appsettings.json
+    
+    - mv $EXCEL_GEN_API_SYSTEMD_SERVICE_PROD /etc/systemd/system/excel-gen-api-prod.service
+    - sudo systemctl daemon-reload
+    - sudo service excel-gen-api-prod stop
+    - sudo service excel-gen-api-prod start
+
+    - sudo mv $NGINX_CONFIG /etc/nginx/conf.d/zebra.conf
+    - sudo mv $NGINX_SSL_KEY /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy done!'
+  
+
+
+
+🔀build-deploy-clickhouse-proxy-staging:
+  stage: build-deploy-backend
+  tags:
+    - staging-deploy
+  only:
+    refs:
+      - staging
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - ls
+    - sudo mkdir -p /home/clickhouse-proxy-staging/
+    - cd clickhouse_proxy
+    - dotnet restore
+    - dotnet publish ClickHouseProxy/ClickHouseProxy.csproj
+    - sudo rm -rf /home/clickhouse-proxy-staging/*
+    - sudo mv ClickHouseProxy/bin/Debug/net6.0/publish/* /home/clickhouse-proxy-staging/
+    - cd ..
+    - sudo mv $CLICKHOUSE_PROXY_CONF_STAGING /home/clickhouse-proxy-staging/appsettings.json
+    
+    - mv $CLICKHOUSE_PROXY_SYSTEMD_SERVICE_STAGING /etc/systemd/system/clickhouse-proxy-staging.service
+    - sudo systemctl daemon-reload
+    - sudo service clickhouse-proxy-staging stop
+    - sudo service clickhouse-proxy-staging start
+    
+    - sudo mv $NGINX_CONFIG_STAGING /etc/nginx/conf.d/zebra-staging.conf
+    - sudo mv $NGINX_SSL_KEY_STAGING /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB_STAGING /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy staging done!'
+    
+🔀build-deploy-clickhouse-proxy-prod:
+  stage: build-deploy-backend
+  tags:
+    - deploy
+  only:
+    refs:
+      - main
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - ls
+    - sudo mkdir -p /home/clickhouse-proxy-prod/
+    - cd clickhouse_proxy
+    - dotnet restore
+    - dotnet publish ClickHouseProxy/ClickHouseProxy.csproj
+    - sudo rm -rf /home/clickhouse-proxy-prod/*
+    - sudo mv ClickHouseProxy/bin/Debug/net6.0/publish/* /home/clickhouse-proxy-prod/
+    - cd ..
+    - sudo mv $CLICKHOUSE_PROXY_CONF_PROD /home/clickhouse-proxy-prod/appsettings.json
+    
+    - mv $CLICKHOUSE_PROXY_SYSTEMD_SERVICE_PROD /etc/systemd/system/clickhouse-proxy-prod.service
+    - sudo systemctl daemon-reload
+    - sudo service clickhouse-proxy-prod stop
+    - sudo service clickhouse-proxy-prod start
+
+    - sudo mv $NGINX_CONFIG /etc/nginx/conf.d/zebra.conf
+    - sudo mv $NGINX_SSL_KEY /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy done!'
+
+
+
+
+📣build-deploy-signalr-api-staging:
+  stage: build-deploy-backend
+  tags:
+    - staging-deploy
+  only:
+    refs:
+      - staging
+  when: manual
+  before_script: *buildBeforeScript
+  script:
+    - ls
+    - sudo mkdir -p /home/signalr-api-staging/
+    - cd signalr/SignalR.API
+    - dotnet restore
+    - dotnet publish SignalR.API/SignalR.API.csproj
+    - sudo rm -rf /home/signalr-api-staging/*
+    - sudo mv SignalR.API/bin/Debug/net6.0/publish/* /home/signalr-api-staging/
+    - cd ..
+    - sudo mv $SIGNALR_API_CONF_STAGING /home/signalr-api-staging/appsettings.json
+    
+    - mv $SIGNALR_API_SYSTEMD_SERVICE_STAGING /etc/systemd/system/signalr-api-staging.service
+    - sudo systemctl daemon-reload
+    - sudo service signalr-api-staging stop
+    - sudo service signalr-api-staging start
+    
+    - sudo mv $NGINX_CONFIG_STAGING /etc/nginx/conf.d/zebra-staging.conf
+    - sudo mv $NGINX_SSL_KEY_STAGING /etc/nginx/ssl.key
+    - sudo mv $NGINX_SSL_PUB_STAGING /etc/nginx/ssl_pub.crt
+    - sudo nginx -t
+    - sudo nginx -s reload
+    - echo 'deploy staging done!'
+
